@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VolatileEnv (ressources)
+Resources:
+  VolatileEnvBucket:
+    Type: AWS::S3::Bucket    
+    DeletionPolicy: Delete
+    Properties: 
+      BucketName: !Sub ${AWS::StackName}-${AWS::AccountId}-${AWS::Region}
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      Tags:
+        - Key: "Team"
+          Value: "cicd"
+Outputs:
+  VolatileEnvBucket:
+    Value: !Ref VolatileEnvBucket
+    Description: The VolatileEnvBucket Name
+  VolatileEnvBucketARN:
+    Value: !GetAtt VolatileEnvBucket.Arn
+    Description: VolatileEnvBucket ARN

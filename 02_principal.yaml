@@ -1,0 +1,916 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VolatileEnv
+
+Resources:
+  VolatileEnvRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-volatileEC2Role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+  VolatileEnvPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "VolatileEnvPolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "cloudformation:DescribeStackResources"
+            Resource: "arn:aws:cloudformation:*:*:stack/cicd*"
+      Roles:
+        - !Ref VolatileEnvRole
+  VolatileEnvProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "${AWS::StackName}"
+      Roles:
+        - !Ref VolatileEnvRole
+  VolatileEnvSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow ssh from me
+      SecurityGroupIngress:
+        - Description: SSH from Merignac / pritunl
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 37.64.125.42/32
+        - Description: meteoApp from Merignac / pritunl
+          IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 37.64.125.42/32
+        - Description: Jenkins https from Merignac / pritunl
+          IpProtocol: tcp
+          FromPort: 8403
+          ToPort: 8403
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 37.64.125.42/32
+        - Description: Minikube https from Merignac / pritunl
+          IpProtocol: tcp
+          FromPort: 8443
+          ToPort: 8443
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 37.64.125.42/32
+        - Description: Minikube dashboard from Merignac / pritunl
+          IpProtocol: tcp
+          FromPort: 8001
+          ToPort: 8001
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 37.64.125.42/32
+        - Description: Jenkins from Merignac / pritunl
+          IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 37.64.125.42/32
+        - Description: Nexus from Merignac / pritunl
+          IpProtocol: tcp
+          FromPort: 8082
+          ToPort: 8082
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 37.64.125.42/32
+        - Description: Registry from Merignac / pritunl
+          IpProtocol: tcp
+          FromPort: 5005
+          ToPort: 5005
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 37.64.125.42/32
+        - Description: meteoApp
+          IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 195.25.86.166/32
+        - Description: Jenkins
+          IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 195.25.86.166/32
+        - Description: Minikube dashboard
+          IpProtocol: tcp
+          FromPort: 8001
+          ToPort: 8001
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 195.25.86.166/32
+        - Description: Jenkins
+          IpProtocol: tcp
+          FromPort: 8403
+          ToPort: 8403
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 195.25.86.166/32
+        - Description: Minikube
+          IpProtocol: tcp
+          FromPort: 8443
+          ToPort: 8443
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 195.25.86.166/32
+        - Description: Nexus
+          IpProtocol: tcp
+          FromPort: 8082
+          ToPort: 8082
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 195.25.86.166/32
+        - Description: Registry
+          IpProtocol: tcp
+          FromPort: 5005
+          ToPort: 5005
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 195.25.86.166/32
+        - Description: Registry from cluster
+          IpProtocol: tcp
+          FromPort: 5005
+          ToPort: 5005
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 78.123.104.84/32
+        - Description: DD webhook to jenkins (autorestart)
+          IpProtocol: tcp
+          FromPort: 8403
+          ToPort: 8403
+          #HOME CidrIp: 0.0.0.0/0
+          CidrIp: 34.107.99.0/24
+
+  #HOME   VolatileEnvKeyPair:
+  #     Type: 'AWS::EC2::KeyPair'
+  #     Properties:
+  #       KeyName: "VolatileEnvKeyPair"
+  #       Tags:
+  #         - Key: "Team"
+  #           Value: "cicd"
+
+  VolatileEnvEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: 't3.xlarge'
+      ImageId: ami-0d2a4a5d69e46ea0b #Ubuntu Server 20.04 LTS (HVM), SSD Volume Type
+      AvailabilityZone: 'eu-west-1a'
+      #HOME        KeyName: !Ref VolatileEnvKeyPair
+      KeyName: "DEV_CICD"
+      IamInstanceProfile : !Ref VolatileEnvProfile
+      SecurityGroupIds:
+        - !Ref VolatileEnvSecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 20
+            Encrypted: true
+      UserData:
+        Fn::Base64: !Sub
+          - |+
+            #!/usr/bin/env bash
+            #set -x
+            set -e
+            
+            # Installing CFN tools
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y python3-distutils
+            wget -O /tmp/aws-cfn-bootstrap-py3-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+            tar -xzvf /tmp/aws-cfn-bootstrap-py3-latest.tar.gz -C /tmp
+            cd /tmp/aws-cfn-bootstrap-2.0
+            python3 setup.py install
+            ln -s /root/aws-cfn-bootstrap-latest/init/ubuntu/cfn-hup /etc/init.d/cfn-hup
+            
+            cfn-init -v --stack ${STACK_NAME} --resource VolatileEnvEC2 --configsets init --region eu-west-1
+
+          - REGION: !Ref AWS::Region
+            STACK_NAME: !Ref AWS::StackName
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          init:
+            - disable_daily_updates
+            - install_dependencies
+            - install_docker
+            - configure_docker
+            - configure_docker_registry
+            - install_jenkins
+            - prepare_cert
+            - configure_jenkins_ssl
+            - install_datadog
+            - configure_datadog
+            - install_no_ip
+            - configure_no_ip
+            - install_nexus
+            - prepare_fix_socket_script
+            - prepare_kubeconfig
+            - install_minikube
+            - configure_minikube
+            - configure_minikube_dashboard
+            - configure_minikube_datadog
+            - config_de_test
+
+        disable_daily_updates:
+          files:
+            /tmp/disable_daily_updates.sh:
+              content: |
+                #!/usr/bin/env bash
+                
+                # disable daily update
+                systemctl stop apt-daily.timer
+                systemctl disable apt-daily.timer
+                systemctl disable apt-daily.service
+                systemctl stop apt-daily-upgrade.timer
+                systemctl disable apt-daily-upgrade.timer
+                systemctl disable apt-daily-upgrade.service
+                apt-get -y update
+                apt-get -y upgrade
+
+              mode: "000700"
+              owner: root
+              group: root
+          commands:
+            01_disable_daily_updates:
+              command: /tmp/disable_daily_updates.sh
+        install_dependencies:
+          files:
+            /etc/sysctl.conf:
+              content: |
+                net.ipv4.neigh.default.gc_thresh1=0
+                vm.max_map_count=262144
+              mode: "000644"
+              owner: root
+              group: root
+            /tmp/install_dependencies.sh:
+              content: |
+                #!/usr/bin/env bash
+                #set -x
+                set -e
+
+                apt-get update -y
+                apt-get install -y \
+                    apt-transport-https \
+                    ca-certificates \
+                    curl \
+                    gnupg-agent \
+                    awscli \
+                    jq \
+                    software-properties-common \
+                    build-essential \
+                    unzip \
+                    moreutils \
+                    zip \
+                    smbclient \
+                    nano \
+                    git
+                apt-get update -y
+                curl -o nodejs.tar.xz "https://nodejs.org/dist/v16.9.1/node-v16.9.1-linux-x64.tar.xz"
+                mkdir -p /usr/local/lib/nodejs
+                tar -xJvf nodejs.tar.xz -C /usr/local/lib/nodejs
+                tar -xJvf nodejs.tar.xz -C /usr/local/lib/nodejs
+                export PATH=/usr/local/lib/nodejs/node-v16.9.1-linux-x64/bin:$PATH
+                ln -s /usr/local/lib/nodejs/node-v16.9.1-linux-x64/bin/node /usr/bin/node
+                ln -s /usr/local/lib/nodejs/node-v16.9.1-linux-x64/bin/npm /usr/bin/npm
+                rm -f nodejs.tar.xz
+                rm -rf /var/lib/apt/lists/*
+                
+                mkdir -p /data/jenkins/tools/
+                cd /data/jenkins/tools/
+                curl --insecure -o ./sonarscanner.zip -L https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.2.0.1873.zip
+                unzip sonarscanner.zip
+                rm sonarscanner.zip
+                mv sonar-scanner-4.2.0.1873 sonar-scanner
+                sed -i 's/use_embedded_jre=true/use_embedded_jre=false/g' sonar-scanner/bin/sonar-scanner
+                ln -s /data/jenkins/tools/sonar-scanner/bin/sonar-scanner /usr/bin/sonar-scanner
+                echo 'SONAR_SCANNER="/data/jenkins/tools/sonar-scanner/"' >> /etc/environment
+                pwd
+                
+                curl -LO https://dl.k8s.io/release/v1.20.0/bin/linux/amd64/kubectl
+                chmod +x ./kubectl
+                mv ./kubectl /usr/local/bin/kubectl
+
+              mode: "000700"
+              owner: root
+              group: root
+          commands:
+            01_apply_sysctl_conf:
+              command: sysctl -p
+            02_install_dependencies:
+              command: /tmp/install_dependencies.sh
+        install_docker:
+          files:
+            /tmp/install_docker.sh:
+              content: |
+                #!/usr/bin/env bash
+                #set -x
+                set -e
+
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+                apt-key fingerprint 0EBFCD88
+                add-apt-repository \
+                  "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+                  $(lsb_release -cs) \
+                  stable"
+                apt-get update
+                apt-get install -y docker-ce docker-ce-cli containerd.io 
+                
+                usermod -aG docker ubuntu
+                
+                docker run hello-world
+                
+                #enable docker at start
+                systemctl enable docker
+
+              mode: "000700"
+              owner: root
+              group: root
+          commands:
+            install_docker:
+              command: /tmp/install_docker.sh
+        configure_docker:
+          files:
+            /etc/docker/daemon.json:
+              content: |
+                {
+                  "bip": "",
+                  "insecure-registries" : [ "aaubertenv.ddns.net:5005" ]
+                }
+              mode: "000644"
+              owner: root
+              group: root
+          commands:
+            02_reboot_docker:
+              command: systemctl restart docker
+        configure_docker_registry:
+          files:
+            /tmp/install_docker_registry.sh:
+              content: |
+                #!/usr/bin/env bash
+                mkdir -p /mnt/registry
+                docker run -d \
+                -p 5005:5000 \
+                -e REGISTRY_STORAGE_DELETE_ENABLED=true \
+                --restart=always \
+                --name registry \
+                -v /mnt/registry:/var/lib/registry \
+                registry:2
+              mode: "000700"
+              owner: root
+              group: root
+          commands:
+            install_docker_registry:
+              command: /tmp/install_docker_registry.sh
+        install_jenkins:
+          files:
+            /tmp/install_jenkins.sh:
+              content: |
+                #!/usr/bin/env bash
+                apt-get update -y
+                apt install openjdk-11-jdk -y
+                
+                curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+                echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+                
+                apt-get update -y
+                apt-get install -y jenkins
+                /etc/init.d/jenkins status
+                /etc/init.d/jenkins stop
+                cd /usr/share/java
+                mv jenkins.war jenkins.war.lastlts
+                wget https://get.jenkins.io/war-stable/2.346.3/jenkins.war
+                usermod -a -G docker jenkins
+                
+                /etc/init.d/jenkins start
+              mode: "000700"
+              owner: root
+              group: root
+          commands:
+            install_jenkins:
+              command: /tmp/install_jenkins.sh
+        install_datadog:
+          files:
+            /tmp/install_datadog.sh:
+              content: |
+                #!/usr/bin/env bash
+                #set -x
+                set -e
+
+                # DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=XXXXXX DD_PROCESS_AGENT_ENABLED=true DD_SITE="datadoghq.eu" DD_PROCESS_CONFIG_ENABLED="true"  bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script.sh)"
+                
+                # systemctl stop datadog-agent
+                
+                docker run -d --cgroupns host \
+                  --pid host \
+                  --name dd-agent \
+                  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+                  -v /var/run/datadog:/var/run/datadog \
+                  -v /proc/:/host/proc/:ro \
+                  -v /cgroup/:/host/sys/fs/cgroup:ro \
+                  -v /etc/passwd:/etc/passwd:ro \
+                  -e DD_LOGS_ENABLED=true \
+                  -e DD_PROCESS_AGENT_ENABLED=true\
+                  -e DD_API_KEY=XXXXXX \
+                  -e DD_SITE="datadoghq.eu" \
+                  -e DD_DOGSTATSD_NON_LOCAL_TRAFFIC="true" \
+                  -e DD_DOGSTATSD_SOCKET="/var/run/datadog/dsd.sock" \
+                  -p 8125:8125/udp \
+                  gcr.io/datadoghq/agent:7
+
+              mode: "000700"
+              owner: root
+              group: root
+            /tmp/restart_datadog.sh:
+              content: |
+                #!/usr/bin/env bash
+                #set -x
+                set -e
+
+                docker stop dd-agent
+                docker container rm dd-agent
+                
+                chmod +x /tmp/install_datadog.sh
+                /tmp/install_datadog.sh
+              mode: "000700"
+              owner: root
+              group: root
+            /etc/datadog-agent/conf.d/http_check.d/conf.yaml:
+              content: |
+                init_config:
+                instances:
+                  - new_tag_names: true
+                  - name: VolatileEnvEC2
+                    url: "unix://var/run/docker.sock"
+
+              mode: '000755'
+              owner: root
+              group: root
+          commands:
+            01_installDD:
+              command: /tmp/install_datadog.sh
+            02_reStartDD:
+              command: /tmp/restart_datadog.sh
+        configure_datadog:
+          files:
+            /etc/datadog-agent/conf.d/http_check.d/conf.yaml:
+              content: |
+                init_config:
+                instances:
+                  - new_tag_names: true
+                  - name: VolatileEnvEC2
+                    url: "unix://var/run/docker.sock"
+
+              mode: '000755'
+              owner: root
+              group: root
+          commands:
+            configureDD:
+              command: /tmp/restart_datadog.sh
+        prepare_cert:
+          files:
+            /tmp/prepare_cert.sh:
+              content: |
+                #!/usr/bin/env bash
+                #set -x
+                set -e
+                
+                mkdir -p /var/lib/jenkins/.keystore/
+                cd /var/lib/jenkins/.keystore/
+                openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 -subj "/C=FR/ST=CESI/L=Bordeaux/O=Dis/CN=aaubertenv.ddns.net" -keyout aaubertenv.key  -out aaubertenv.cert
+                openssl pkcs12 -export -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -export -in aaubertenv.cert -inkey aaubertenv.key -name jenkins -out aaubertenv.p12 -passout pass:123456
+                keytool -importkeystore -destkeystore aaubertenv.jks -deststoretype PKCS12 -srcstoretype PKCS12 -srckeystore aaubertenv.p12 -srcstorepass 123456 -deststorepass 123456
+                keytool -export -keystore aaubertenv.jks -alias jenkins -file jenkins.cloud.local.crt -deststorepass 123456
+                keytool -importcert -file jenkins.cloud.local.crt -alias jenkins -keystore -cacerts  -deststorepass 123456  -noprompt              
+
+              mode: '000755'
+              owner: root
+              group: root
+          commands:
+            prepareCert:
+              command: /tmp/prepare_cert.sh
+        configure_jenkins_ssl:
+          files:
+            /etc/systemd/system/jenkins.service.d/override.conf:
+              content: |
+                [Service]
+                Environment="JENKINS_HTTPS_PORT=8403"
+                Environment="JENKINS_HTTPS_KEYSTORE=/var/lib/jenkins/.keystore/aaubertenv.jks"
+                Environment="JENKINS_HTTPS_KEYSTORE_PASSWORD=123456"
+                Environment="JENKINS_OPTS=--httpsRedirectHttp"
+                User=ubuntu
+                Group=ubuntu
+              mode: '000600'
+              owner: root
+              group: root
+          commands:
+            00_prepare_rights:
+              command: systemctl stop jenkins.service && chown -R ubuntu:ubuntu /var/lib/jenkins && chown -R ubuntu:ubuntu /var/cache/jenkins && chown -R ubuntu:ubuntu /var/log/jenkins
+            01_reload_daemon:
+              command: systemctl daemon-reload
+            02_restart_service:
+              command: systemctl start jenkins.service
+        install_no_ip:
+          files:
+            /tmp/install_no_ip.sh:
+              content: |
+                #!/usr/bin/env bash
+                set -x
+                set -e
+
+                cd /usr/local/src/
+                wget http://www.noip.com/client/linux/noip-duc-linux.tar.gz
+                tar xf noip-duc-linux.tar.gz
+                cd noip-2.1.9-1/
+                # make install
+
+              mode: "000700"
+              owner: root
+              group: root
+          commands:
+            install_no_ip:
+              command: /tmp/install_no_ip.sh
+        configure_no_ip:
+          files:
+            /etc/systemd/system/noip2.service:
+              content: |
+                [Unit]
+                Description=noip2 service
+                
+                [Service]
+                Type=forking
+                ExecStart=/usr/local/bin/noip2
+                Restart=always
+                
+                [Install]
+                WantedBy=default.target
+              mode: "000755"
+              owner: root
+              group: root
+        install_nexus:
+          files:
+            /tmp/install_nexus.sh:
+              content: |
+                #!/usr/bin/env bash
+                #set -x
+                set -e
+                mkdir -p /mnt/nexus-data
+                chown -R 200 /mnt/nexus-data
+                docker run -d -p 8082:8081 --name nexus -v /mnt/nexus-data:/nexus-data --restart=always sonatype/nexus3
+              mode: "000700"
+              owner: root
+              group: root
+          commands:
+            install_nexus:
+              command: /tmp/install_nexus.sh
+        prepare_fix_socket_script:
+          files:
+            /home/ubuntu/fix_socket_script.sh:
+              content: |
+                #!/usr/bin/env bash
+                docker stop cesi-meteo || true
+                mkdir -p /var/run/datadog/
+                
+                chmod 777 /var/run/datadog/
+                chown -R root:docker /var/run/datadog/
+                
+                # /tmp/restart_datadog.sh   <-- this restore socket to root:root, that's why it does not work from cesi-meteo after
+                docker start cesi-meteo || true
+
+              mode: "000744"
+              owner: ubuntu
+              group: ubuntu
+          commands:
+            fix_socket_script:
+              command: /home/ubuntu/fix_socket_script.sh
+        prepare_kubeconfig:
+          files:
+            /home/ubuntu/.kube/config:
+              content: |
+                apiVersion: v1
+                clusters:
+                  - cluster:
+                      certificate-authority: /home/ubuntu/.minikube/ca.crt
+                      extensions:
+                        - extension:
+                            last-update: Mon, 05 Jun 2023 20:25:30 UTC
+                            provider: minikube.sigs.k8s.io
+                            version: v1.30.1
+                          name: cluster_info
+                      server: https://192.168.49.2:8443
+                    name: minikube
+                contexts:
+                  - context:
+                      cluster: minikube
+                      extensions:
+                        - extension:
+                            last-update: Mon, 05 Jun 2023 20:25:30 UTC
+                            provider: minikube.sigs.k8s.io
+                            version: v1.30.1
+                          name: context_info
+                      namespace: default
+                      user: minikube
+                    name: minikube
+                current-context: minikube
+                kind: Config
+                preferences: {}
+                users:
+                  - name: minikube
+                    user:
+                      client-certificate: /home/ubuntu/.minikube/profiles/minikube/client.crt
+                      client-key: /home/ubuntu/.minikube/profiles/minikube/client.key
+              mode: "000744"
+              owner: ubuntu
+              group: ubuntu
+            /home/ubuntu/.kube/config_oldmicrok8s:
+              content: |
+                apiVersion: v1
+                clusters:
+                  - cluster:
+                      certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURBVENDQWVtZ0F3SUJBZ0lKQU93ZGVRR0MwTmFCTUEwR0NTcUdTSWIzRFFFQkN3VUFNQmN4RlRBVEJnTlYKQkFNTURERXdMakUxTWk0eE9ETXVNVEFlRncweU1ERXlNVFl4TURBNE16UmFGdzB6TURFeU1UUXhNREE0TXpSYQpNQmN4RlRBVEJnTlZCQU1NRERFd0xqRTFNaTR4T0RNdU1UQ0NBU0l3RFFZSktvWklodmNOQVFFQkJRQURnZ0VQCkFEQ0NBUW9DZ2dFQkFLU1dZVFZITTRWdSt5VzlSNGROUytXYmx1aGlSaVZXSmFmaGxFbUYrc0NYdEUzN1N2My8KN3VPbUxva1NYYmYyVnhXb0ZMbGYrMHN3bE1hdDErblEyK3FFUXRmbkswQ0wxQjNOeDlVVE1IMGZwUGVaaGwxLwpsaUxLYWF3UUpsVHptSGkyc0xvWmZraHYzbUh6QmEwYTJKSlNhbHlDeFJoSGE3Uko3ZVJZY2xhSStRNTA1aVNRCktKUmVLQVgyMEpldGxDUDFNVWFUdTh3WC9Qc0NVckRBNHJ3ckVPNGVwQTNkSGdZdVlpSFJsakl3c3NLNGpEbm0KYkJyTHA0SUlDR3FoRjlHL1dEWXJBa0hobGlteWxuYU1hYWNXZjBiODB2eDBnSmpoY3pmQzM0THNub3M5Q29EbwpKMitIY21YMXpPUUdyQm8yaXZRL3RUaWhXNnJtQzZFa1lGVUNBd0VBQWFOUU1FNHdIUVlEVlIwT0JCWUVGTDRFCjRzR040NzdBdWZIem1hbThOekEwbWZPdU1COEdBMVVkSXdRWU1CYUFGTDRFNHNHTjQ3N0F1Zkh6bWFtOE56QTAKbWZPdU1Bd0dBMVVkRXdRRk1BTUJBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUVjQXRacFBUVDUrVnNPRwpEcldIRGxkc0dwWitFUUZLVGFVcFZwU3RRUkRnY0RwRWRGUEtXSFRhQjRqYVlMVkwrbHFaRm54cE9QS3JxS1llCmVHbnYxQzhjM2pxcThJcnF2SE9xUFJ1UEtVRVN5c0pNYVN2MnpibS8vWklWTmJJSWRpRnVMSFA3Z3hSbkZUNjkKVGFNdjhPdVBWUzZzYW04L3JIR1J6VGVxamxHZ3V6RVhyYkR5bFVqWmUyMEt4VjIwQXhKL1lFeTM0NkZjcHZySQphNkFNQ2RIZ204UG1mUGJwR2htUmdZMEQwSkxyaWU2QWxOVHlOU21hYUd0SUdjT2FWQVBsTlcxdmwrU2hRU2tHCnR3dkxwa2lPWkx5bGh4dms4L0JiVkVtdmJkVEZLcWd4S2NuQTJOeTM1MlpiMlZkdkZSOVVLa3lSSEgvQ1lDUWEKOTJxa1lGST0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+                      server: https://aaubert.ddns.net:8443
+                    name: microk8s-cluster
+                contexts:
+                  - context:
+                      cluster: microk8s-cluster
+                      user: admin
+                    name: microk8s
+                current-context: microk8s
+                kind: Config
+                preferences: {}
+                users:
+                  - name: admin
+                    user:
+                      username: admin
+                      password: XXXXXX
+              mode: "000744"
+              owner: ubuntu
+              group: ubuntu
+        install_minikube:
+          files:
+            /tmp/install_minikube.sh:
+              content: |
+                #!/usr/bin/env bash
+                #set -x
+                set -e
+
+                #install kubectl
+                curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+                chmod +x ./kubectl
+                sudo mv ./kubectl /usr/local/bin/kubectl
+                
+                
+                #install minikube
+                curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+                sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+              mode: "000700"
+              owner: root
+              group: root
+          commands:
+            install_minikube:
+              command: /tmp/install_minikube.sh
+        configure_minikube:
+          files:
+            /home/ubuntu/.minikube/files/etc/hosts:
+              content: |
+                127.0.0.1 localhost
+
+                # The following lines are desirable for IPv6 capable hosts
+                ::1 ip6-localhost ip6-loopback
+                fe00::0 ip6-localnet
+                ff00::0 ip6-mcastprefix
+                ff02::1 ip6-allnodes
+                ff02::2 ip6-allrouters
+                ff02::3 ip6-allhosts
+                EC2_LOCAL_IP aaubertenv.ddns.net
+              mode: "000700"
+              owner: ubuntu
+              group: ubuntu
+            /tmp/update_ip_in_minikube_hosts.sh:
+              content: |
+                EC2_LOCAL_IP=$(curl -f http://169.254.169.254/latest/meta-data/local-ipv4)
+                sed -i s/EC2_LOCAL_IP/${EC2_LOCAL_IP}/g /home/ubuntu/.minikube/files/etc/hosts
+                cat /home/ubuntu/.minikube/files/etc/hosts
+              mode: "000700"
+              owner: ubuntu
+              group: ubuntu
+            /etc/systemd/system/minikube.service:
+              content: |
+                [Unit]
+                Description=Kickoff Minikube Cluster
+                After=docker.service
+                
+                [Service]
+                Type=oneshot
+                ExecStart=/usr/local/bin/minikube start --driver=docker --insecure-registry=aaubertenv.ddns.net:5005
+                RemainAfterExit=true
+                ExecStop=/usr/local/bin/minikube stop
+                StandardOutput=journal
+                User=ubuntu
+                Group=ubuntu
+                
+                [Install]
+                WantedBy=multi-user.target
+              mode: "000644"
+              owner: root
+              group: root
+          commands:
+            00_update_ip_in_hosts:
+              command: /tmp/update_ip_in_minikube_hosts.sh
+            01_reload_daemon:
+              command: systemctl daemon-reload
+            02_enable_minikube:
+              command: systemctl enable minikube
+            03_start_minikube:
+              command: chown -R ubuntu:ubuntu /home/ubuntu/.kube && chown -R ubuntu:ubuntu /home/ubuntu/.minikube && chmod 777 /var/run/docker.sock && systemctl start minikube
+        configure_minikube_dashboard:
+          files:
+            /tmp/enable_minikube_db_dd.sh:
+              content: |
+                minikube addons enable dashboard
+                minikube addons enable metrics-server
+                kubectl get pods --namespace=kubernetes-dashboard
+                
+                curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+                chmod +x get_helm.sh
+                ./get_helm.sh
+
+                helm repo add datadog https://helm.datadoghq.com
+                helm repo update
+
+                helm install datadog-agent -f /tmp/datadog-values.yaml  --set datadog.apiKey=XXXXXX datadog/datadog --set targetSystem=linux
+                
+                echo "use CTRL+Z to keep proxy in background if needed"
+                nohup kubectl proxy --address='0.0.0.0' --accept-hosts='^*$' &
+              mode: "000700"
+              owner: ubuntu
+              group: ubuntu
+        configure_minikube_datadog:
+          files:
+            /tmp/datadog-values.yaml:
+              content: |
+                datadog:
+                  site:  datadoghq.eu
+                  kubelet:
+                    tlsVerify:  false
+              mode: "000644"
+              owner: ubuntu
+              group: ubuntu
+        config_de_test:
+          files:
+            /tmp/restore_jenkins_backup.sh:
+              content: |
+                #!/usr/bin/env bash
+                
+                set -euo pipefail
+                IFS=$'\n\t'
+                
+                #push files.zip to ~/
+                echo "Push last jenkinsbackup.tar file to your /home/ubuntu/ dir then go on !"
+                read -p "Continue ? " -n 1 -r
+                echo    
+                if [[ $REPLY =~ ^[Yy]$ ]]
+                then
+                  read -p "Enter backup_name [backup20221010.tar]: " BACKUP_NAME
+                  BACKUP_NAME=${BACKUP_NAME:-backup20221010.tar}
+                  echo $BACKUP_NAME
+                
+                  cd /home/ubuntu/
+                  if [ -f "$BACKUP_NAME" ]; then
+                    echo "$BACKUP_NAME file exists, go on to restore it !"
+                
+                    #restore jenkins backup
+                    /etc/init.d/jenkins stop
+                
+                    #unzip files to ~/jenkins_backup
+                    cd /home/ubuntu/
+                    tar -xf $BACKUP_NAME
+                
+                    #copy all files to jenkins dir
+                    cp -r /var/lib/jenkins/ /var/lib/jenkinsbak/
+                    cd /home/ubuntu/new_jenkins_backup/
+                    cp -R * /var/lib/jenkins/
+                    chown -R ubuntu:ubuntu /var/lib/jenkins/
+                
+                    #restart jenkins
+                    /etc/init.d/jenkins start
+                
+                  else
+                    echo "File $BACKUP_NAME does not exist, come back later and try again !"
+                  fi
+                
+                else
+                  echo "You're not ready, exiting."
+                fi
+              mode: "000700"
+              owner: root
+              group: root
+            /tmp/create_new_jenkins_backup_file.sh:
+              content: |
+                #!/usr/bin/env bash
+
+                # restore jenkins backup
+                /etc/init.d/jenkins stop
+
+                # backup files to ~/new_jenkins_backup
+                mkdir -p /home/ubuntu/new_jenkins_backup/
+                rsync -zrvh --delete /var/lib/jenkins/ /home/ubuntu/new_jenkins_backup/
+                
+                rm -rf /home/ubuntu/new_jenkins_backup/.npm/
+                rm -rf /home/ubuntu/new_jenkins_backup/.cache/
+                rm -rf /home/ubuntu/new_jenkins_backup/.sonar/
+                rm -rf /home/ubuntu/new_jenkins_backup/caches
+                rm -rf /home/ubuntu/new_jenkins_backup/logs
+                rm -rf /home/ubuntu/new_jenkins_backup/workspace
+                rm -rf /home/ubuntu/new_jenkins_backup/new_jenkins_backup
+                rm -rf /home/ubuntu/new_jenkins_backup/*.zip
+                rm -rf /home/ubuntu/new_jenkins_backup/*.tar
+                rm -rf /home/ubuntu/new_jenkins_backup/plugins/*/
+                
+                # create new archive
+                cd /home/ubuntu/
+                BACKUP_NAME=backup$(date +%Y%m%d_%H%M)
+                tar -czvf ${BACKUP_NAME}.tar new_jenkins_backup/
+                ls -ll
+                
+                #restart jenkins
+                /etc/init.d/jenkins start       
+                
+                echo "Backup is ready, get it from sftp : /home/ubuntu/${BACKUP_NAME}.tar"
+
+              mode: "000700"
+              owner: root
+              group: root
+            /tmp/run_manually.sh:
+              content: |
+                #!/usr/bin/env bash
+                #configure noip server
+                systemctl stop noip2
+                cd /usr/local/src/noip-2.1.9-1
+                make install
+                
+                systemctl enable noip2
+                systemctl daemon-reload
+                systemctl restart noip2
+                systemctl status noip2
+                
+                #to be able to run kubectl commands from jenkins locally
+                chmod 777 /home/ubuntu/.minikube/profiles/minikube/client.crt
+                chmod 777 /home/ubuntu/.minikube/profiles/minikube/client.key
+                echo "127.0.0.1 aaubertenv.ddns.net" >> /etc/hosts
+              mode: "000700"
+              owner: root
+              group: root
+            /tmp/config_de_test.sh:
+              content: |
+                #!/usr/bin/env bash
+                #set -x
+                set -e
+
+                echo "You setup is ok dude ! Run these scripts manually to finish preparing env:"
+                echo "0. as ubuntu user run :"
+                echo ""
+                echo "      /tmp/enable_minikube_db_dd.sh"
+                echo ""
+                echo "1. DDNS CONFIG"
+                echo "      sudo su"
+                echo "      /tmp/run_manually.sh"  
+                
+                echo "2. RESTORE JENKINS BACKUP"
+                echo "      upload backup file to EC2 in '~/'"
+                echo "      sudo su"
+                echo "      /tmp/restore_jenkins_backup.sh"  
+                
+                echo "3. RUN APP"
+                echo "      Run cesi-meteo app (deploy build #9) : https://aaubertenv.ddns.net:8403/job/DevOps_Module/job/BackOffice/job/3.%20Deploy%20and%20run%20specific%20version/"
+
+                echo "      TODO NEXT : pas de conf nexus ?"
+                echo ""
+                echo "      Allow access from CESI : "
+                echo "      aws ec2 authorize-security-group-ingress --group-id sg-XXXXXXXXXXXX --protocol tcp --port 8080 --cidr XX.XX.XX.XX/32"
+                echo "      aws ec2 authorize-security-group-ingress --group-id sg-XXXXXXXXXXXX --protocol tcp --port 8082 --cidr XX.XX.XX.XX/32"
+                echo "      aws ec2 authorize-security-group-ingress --group-id sg-XXXXXXXXXXXX --protocol tcp --port 8085 --cidr XX.XX.XX.XX/32"
+                echo "      aws ec2 authorize-security-group-ingress --group-id sg-XXXXXXXXXXXX --protocol tcp --port 3000 --cidr XX.XX.XX.XX/32"
+                echo "      aws ec2 authorize-security-group-ingress --group-id sg-XXXXXXXXXXXX --protocol tcp --port 8403 --cidr XX.XX.XX.XX/32"
+                echo "      aws ec2 authorize-security-group-ingress --group-id sg-XXXXXXXXXXXX --protocol tcp --port 8443 --cidr XX.XX.XX.XX/32"
+                echo "      aws ec2 authorize-security-group-ingress --group-id sg-XXXXXXXXXXXX --protocol tcp --port 5005 --cidr XX.XX.XX.XX/32"
+                echo ""
+
+              mode: "000777"
+              owner: root
+              group: root
+          commands:
+            config_de_test:
+              command: /tmp/config_de_test.sh
+
+
+Outputs:
+  VolatileEnvEC2PrivateIP:
+    Value: !GetAtt    VolatileEnvEC2.PrivateIp
+    Description: EC2 Private IP
+  VolatileEnvEC2PublicIP:
+    Value: !GetAtt    VolatileEnvEC2.PublicIp
+    Description: EC2 Public IP
+  VolatileEnvSecurityGroupID:
+    Value: !GetAtt    VolatileEnvSecurityGroup.GroupId
+    Description: SecurityGroup ID
